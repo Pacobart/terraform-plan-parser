@@ -19,11 +19,12 @@ create_parse = '[0m will be created'#' will be created'. gitlab
 tf_rm_command = 'terraform state rm -ignore-remote-version' # command to prepend to each destroy line
 tf_create_command = 'terraform import -ignore-remote-version'
 
-def line_cleanup(input):
+def line_cleanup(input, out_type='cli'):
     input = input.replace(destroy_parse, '')
     input = input.replace(create_parse, '')
     input = input.replace('{} '.format(tf_action_parse), '')
-    input = input.replace('"', r'\"')
+    if out_type == 'cli':
+        input = input.replace('"', r'\"')
     return input
 
 def destroy_commands(lines):
@@ -60,7 +61,7 @@ def destroy_hcl(lines):
         if line.startswith(tf_action_parse):
             count += 1
             if destroy_parse in line:
-                line = line_cleanup(line)
+                line = line_cleanup(line, 'hcl')
                 line = format_hcl("destroyed", line)
                 destroys.append(line)
     return destroys
@@ -73,7 +74,7 @@ def create_hcl(lines):
         if line.startswith(tf_action_parse):
             count += 1
             if create_parse in line:
-                line = line_cleanup(line)
+                line = line_cleanup(line, 'hcl')
                 line = format_hcl("created", line)
                 creates.append(line)
     return creates
