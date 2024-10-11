@@ -10,19 +10,43 @@ import os
 import sys
 import argparse
 
-#tf_action_parse = '[1m  #' # present at beginning of <resource> will be destroyed. tfc plan
-tf_action_parse = '[1m  #' # present at beginning of <resource> will be destroyed. gitlab plan
-#destroy_parse = '[0m will be [1m[31mdestroyed[0m' # present at the end of <resource> will be destroyed. Used to differentiate between destroy and other actions. tfc
-destroy_parse = '[0m will be [1m[31mdestroyed[0m' # present at the end of <resource> will be destroyed. Used to differentiate between destroy and other actions. gitlab
-#create_parse = '[0m will be created'#' will be created'. tfc
-create_parse = '[0m will be created'#' will be created'. gitlab
 tf_rm_command = 'terraform state rm -ignore-remote-version' # command to prepend to each destroy line
 tf_create_command = 'terraform import -ignore-remote-version'
 
+def tf_action_parse(input):
+    tf_action_parse_1 = '[1m  #' # present at beginning of <resource> will be destroyed. tfc plan
+    tf_action_parse_2 = '[1m  #' # present at beginning of <resource> will be destroyed. gitlab plan
+    if tf_action_parse_1 in input:
+        return tf_action_parse_1
+    elif tf_action_parse_2 in input:
+        return tf_action_parse_2
+    else:
+        return 'UNDEFINED'
+
+def tf_destroy_parse(input):
+    destroy_parse_1 = '[0m will be [1m[31mdestroyed[0m' # present at the end of <resource> will be destroyed. Used to differentiate between destroy and other actions. tfc
+    destroy_parse_2 = '[0m will be [1m[31mdestroyed[0m' # present at the end of <resource> will be destroyed. Used to differentiate between destroy and other actions. gitlab
+    if destroy_parse_1 in input:
+        return destroy_parse_1
+    elif destroy_parse_2 in input:
+        return destroy_parse_2
+    else:
+        return 'UNDEFINED'
+    
+def tf_create_parse(input):
+    create_parse_1 = '[0m will be created'#' will be created'. tfc
+    create_parse_2 = '[0m will be created'#' will be created'. gitlab
+    if create_parse_1 in input:
+        return create_parse_1
+    elif create_parse_2 in input:
+        return create_parse_2
+    else:
+        return 'UNDEFINED'
+
 def line_cleanup(input, out_type='cli'):
-    input = input.replace(destroy_parse, '')
-    input = input.replace(create_parse, '')
-    input = input.replace('{} '.format(tf_action_parse), '')
+    input = input.replace(tf_destroy_parse(input), '')
+    input = input.replace(tf_create_parse(input), '')
+    input = input.replace('{} '.format(tf_action_parse(input)), '')
     if out_type == 'cli':
         input = input.replace('"', r'\"')
     return input
@@ -32,9 +56,9 @@ def destroy_commands(lines):
     count = 0
     for line in lines:
         line = line.strip() # remove newline
-        if line.startswith(tf_action_parse):
+        if line.startswith(tf_action_parse(line)):
             count += 1
-            if destroy_parse in line:
+            if tf_destroy_parse(line) in line:
                 line = line_cleanup(line)
                 line = "{} \"{}\"".format(tf_rm_command, line)
                 destroys.append(line)
@@ -45,9 +69,9 @@ def create_commands(lines):
     count = 0
     for line in lines:
         line = line.strip()
-        if line.startswith(tf_action_parse):
+        if line.startswith(tf_action_parse(line)):
             count += 1
-            if create_parse in line:
+            if tf_create_parse(line) in line:
                 line = line_cleanup(line)
                 line = "{} \"{}\" \"\"".format(tf_create_command, line)
                 creates.append(line)
@@ -58,9 +82,9 @@ def destroy_hcl(lines):
     count = 0
     for line in lines:
         line = line.strip() # remove newline
-        if line.startswith(tf_action_parse):
+        if line.startswith(tf_action_parse(line)):
             count += 1
-            if destroy_parse in line:
+            if tf_destroy_parse(line) in line:
                 line = line_cleanup(line, 'hcl')
                 line = format_hcl("destroyed", line)
                 destroys.append(line)
@@ -71,9 +95,9 @@ def create_hcl(lines):
     count = 0
     for line in lines:
         line = line.strip()
-        if line.startswith(tf_action_parse):
+        if line.startswith(tf_action_parse(line)):
             count += 1
-            if create_parse in line:
+            if tf_create_parse(line) in line:
                 line = line_cleanup(line, 'hcl')
                 line = format_hcl("created", line)
                 creates.append(line)
