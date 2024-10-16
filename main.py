@@ -86,7 +86,7 @@ def destroy_hcl(lines):
             count += 1
             if tf_destroy_parse(line) in line:
                 line = line_cleanup(line, 'hcl')
-                line = format_hcl("destroyed", line)
+                line = format_hcl("destroyed", "moved", line)
                 destroys.append(line)
     return destroys
 
@@ -99,18 +99,22 @@ def create_hcl(lines):
             count += 1
             if tf_create_parse(line) in line:
                 line = line_cleanup(line, 'hcl')
-                line = format_hcl("created", line)
+                line = format_hcl("created", "import", line)
                 creates.append(line)
     return creates
 
-def format_hcl(keyword, line):
+def format_hcl(keyword, statement, line):
     hcl_from = ''
     hcl_to = ''
-    if keyword == 'created':
+    if statement == 'moved':
+        if keyword == 'created':
+            hcl_to = line
+        if keyword == 'destroyed':
+            hcl_from = line
+        hcl = f'moved {{\n  from = {hcl_from}\n  to = {hcl_to}\n}}'
+    if statement == 'import':
         hcl_to = line
-    if keyword == 'destroyed':
-        hcl_from = line
-    hcl = f'moved {{\n  from = {hcl_from}\n  to = {hcl_to}\n}}'
+        hcl = f'import {{\n  to = {hcl_to}\n  id = ""\n}}'
     return hcl
 
 def main():
